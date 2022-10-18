@@ -13,6 +13,7 @@ void setup(){
   servoY.attach(9,470,2500);
 
 
+<<<<<<< Updated upstream:src/手动输入追星/手动输入追星.ino
   X = 0;
   Y = 0;
   // X = 90;
@@ -24,6 +25,10 @@ void setup(){
   Yin = 0;
   // Xin = 154;
   // Yin = 71;
+=======
+  Xin = 150;
+  Yin = 44;
+>>>>>>> Stashed changes:src/手动输入追星.ino
 
 
 
