@@ -9,14 +9,33 @@ Servo servoX;
 Servo servoY;
 
 void setup(){
-  servoX.attach(9,470,2500);
-  servoY.attach(10,470,2500);
+  servoX.attach(10,470,2500);
+  servoY.attach(9,470,2500);
+
+
+  X = 0;
+  Y = 0;
+  // X = 90;
+  // Y = 90;
+  // X = 180;
+  // Y = 180;
+
+  Xin = 0;
+  Yin = 0;
+  // Xin = 154;
+  // Yin = 71;
 
 
 
-  Xin = 150;
-  Yin = 44;
 
+}
+
+void loop(){
+  if(Xin == 360)
+    Xin = 0;
+  if(Xin<360)
+    Xin++;
+  Yin=Xin/4;
 
 
   if (Xin <= 180 and Xin >= 0){
@@ -31,9 +50,8 @@ void setup(){
     X = 0;
     Y = 0;
   }
-}
 
-void loop(){
+
   servoX.write(X);
   servoY.write(Y);
   delay(100);
