@@ -7,8 +7,6 @@
 
 #define I2C_ADDRESS 0x3C
 
-#define UseWirelessSerial 0;
-
 // Define Pin Usage
 const int servoXPin = 9;
 const int servoYPin = 10;
@@ -28,6 +26,8 @@ SoftwareSerial ZigbeeSerial(softRX, softTX);
 const int ServoMin = 470;
 const int ServoMax = 2500;
 
+const int ModeSelect = 0;
+
 bool servo_driver(int Xin, int Yin) {  // Function to drive the servos
     if (Xin <= 180 and Xin >= 0) {
         X = 180 - Xin;
@@ -45,12 +45,22 @@ bool servo_driver(int Xin, int Yin) {  // Function to drive the servos
     return true;
 }
 
-void oledDisplay(int x, int y, String s, String Status) {  // Function to drive the oled
-    oled.println("Yaw: " + String(x) + " Pit: " + String(y));
-    oled.set2X();
-    oled.println(s);
+void oledDisplay121(String str1, String str2, String str3) {  // Function to drive the oled
+    oled.clear();
     oled.set1X();
-    oled.println(Status);
+    oled.println(str1);
+    oled.set2X();
+    oled.println(str2);
+    oled.set1X();
+    oled.println(str3);
+}
+
+void oledDisplay111(String str1, String str2, String str3) {  // Function to drive the oled
+    oled.clear();
+    oled.set1X();
+    oled.println(str1);
+    oled.println(str2);
+    oled.println(str3);
 }
 
 void setup() {  // Setup function
@@ -69,24 +79,34 @@ void setup() {  // Setup function
     oled.setI2cClock(20000);
     oled.setFont(Adafruit5x7);
     oled.clear();
-
+    oledDisplay121("Initializing", "Servos", "please wait");
     servoX.attach(servoXPin, ServoMin, ServoMax);
     servoY.attach(servoYPin, ServoMin, ServoMax);
     Xin = 150;
     Yin = 44;
+    delay(200);
+    oledDisplay121("StarTracker", "Complete", "Wait for command.");
 }
 
 void loop() {
-    SW = analogRead(pinSW);
+    if (ModeSelect == 0) {  // Normal Mode
+        SW = digitalRead(pinSW);
+    } else {  // Debug Mode
+        SW = ModeSelect;
+    }
+
     if (0 < SW < 300) {  // Manual Mode
         Serial.println("Manual Mode");
+        oledDisplay111("Manual Mode", "X: " + String(Xin) , "Y: " + String(Yin));
         Xin = map(analogRead(pinX), 0, 1023, 0, 360);
         Yin = map(analogRead(pinY), 0, 1023, 0, 360);
         servo_driver(Xin, Yin);
         Serial.println("Yaw: " + String(Xin) + " Pitch: " + String(Yin) + " Status: " + String(Status));
+        delay(100); //This has a shorter delay to make the servos more responsive
 
     } else if (300 < SW < 700) {  // Serial Mode
         Serial.println("Serial Mode");
+        oledDisplay111("Serial Mode", "X: " + String(Xin) , "Y: " + String(Yin));
         if (Serial.available() > 0) {
             String a = Serial.readString();
             String value1, value2;
@@ -101,10 +121,12 @@ void loop() {
             Yin = value2.toInt();
             Status = servo_driver(Xin, Yin);
             Serial.println("Yaw: " + String(Xin) + " Pitch: " + String(Yin) + " Status: " + String(Status));
+            delay(2000);
         }
 
     } else if (700 < SW < 1023) {  // Wireless Mode
         Serial.println("Wireless Mode");
+        oledDisplay111("Wireless Mode", "X: " + String(Xin) , "Y: " + String(Yin));
         ZigbeeSerial.println("Enable Wireless Mode");
         String a;
         int count = 0;
@@ -116,6 +138,7 @@ void loop() {
                 Serial.print(c);
                 c = ZigbeeSerial.read();
             }
+            
         }
 
         if (a.length() > 0) {
@@ -131,7 +154,8 @@ void loop() {
             Yin = value2.toInt();
             Status = servo_driver(Xin, Yin);
             Serial.println("Yaw: " + String(Xin) + " Pitch: " + String(Yin) + " Status: " + String(Status));
+            delay(2000);
         }
     }
-    delay(2000);
+    
 }
