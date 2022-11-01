@@ -21,40 +21,9 @@ const int softTX = 3;
 // Initalize variables
 int Xin, Yin, X, Y, SW;
 bool Status = false;
-
 int mainCount = 0;
 Servo servoX;
 Servo servoY;
-// Adafruit_SSD1306 oled(128, 32, &Wire, OLED_RESET);
-SoftwareSerial ZigbeeSerial(softRX, softTX);
-MPU6050 mpu;
-U8X8_SSD1306_128X32_UNIVISION_SW_I2C u8x8(/* clock=*/SCL, /* data=*/SDA,
-                                          /* reset=*/U8X8_PIN_NONE);
-
-uint8_t u8log_buffer[U8LOG_WIDTH * U8LOG_HEIGHT];
-U8X8LOG u8x8log;
-
-int16_t ax, ay, az;
-int16_t gx, gy, gz;
-unsigned long now, lastTime = 0;
-float dt;                                                    //微分时间
-float aax = 0, aay = 0, aaz = 0, agx = 0, agy = 0, agz = 0;  //角度变量
-long axo = 0, ayo = 0, azo = 0;  //加速度计偏移量
-long gxo = 0, gyo = 0, gzo = 0;  //陀螺仪偏移量
-
-float pi = 3.1415926;
-float AcceRatio = 16384.0;  //加速度计比例系数
-float GyroRatio = 131.0;    //陀螺仪比例系数
-
-uint8_t n_sample = 8;  //加速度计滤波算法采样个数
-float aaxs[8] = {0}, aays[8] = {0}, aazs[8] = {0};  // x,y轴采样队列
-long aax_sum, aay_sum, aaz_sum;                     // x,y轴采样和
-
-float a_x[10] = {0}, a_y[10] = {0}, a_z[10] = {0}, g_x[10] = {0}, g_y[10] = {0},
-      g_z[10] = {0};               //加速度计协方差计算队列
-float Px = 1, Rx, Kx, Sx, Vx, Qx;  // x轴卡尔曼变量
-float Py = 1, Ry, Ky, Sy, Vy, Qy;  // y轴卡尔曼变量
-float Pz = 1, Rz, Kz, Sz, Vz, Qz;  // z轴卡尔曼变量
 
 const int ServoMin = 470;
 const int ServoMax = 2500;
@@ -68,8 +37,36 @@ const int ServoMax = 2500;
 3. Pointer Mode
     Point by hand and it will follow your lead*/
 const int ModeSelect = 0;
-const int WirelessSerial = 0;
+const int WirelessSerial = 1;
 String Mode;
+
+// Adafruit_SSD1306 oled(128, 32, &Wire, OLED_RESET);
+SoftwareSerial ZigbeeSerial(softRX, softTX);
+MPU6050 mpu;
+U8X8_SSD1306_128X32_UNIVISION_SW_I2C u8x8(/* clock=*/SCL, /* data=*/SDA,
+                                          /* reset=*/U8X8_PIN_NONE);
+uint8_t u8log_buffer[U8LOG_WIDTH * U8LOG_HEIGHT];
+U8X8LOG u8x8log;
+
+int16_t ax, ay, az;
+int16_t gx, gy, gz;
+
+unsigned long now, lastTime = 0;
+float dt;                                                    //微分时间
+float aax = 0, aay = 0, aaz = 0, agx = 0, agy = 0, agz = 0;  //角度变量
+long axo = 0, ayo = 0, azo = 0;  //加速度计偏移量
+long gxo = 0, gyo = 0, gzo = 0;  //陀螺仪偏移量
+float pi = 3.1415926;
+float AcceRatio = 16384.0;  //加速度计比例系数
+float GyroRatio = 131.0;    //陀螺仪比例系数
+uint8_t n_sample = 8;       //加速度计滤波算法采样个数
+float aaxs[8] = {0}, aays[8] = {0}, aazs[8] = {0};  // x,y轴采样队列
+long aax_sum, aay_sum, aaz_sum;                     // x,y轴采样和
+float a_x[10] = {0}, a_y[10] = {0}, a_z[10] = {0}, g_x[10] = {0}, g_y[10] = {0},
+      g_z[10] = {0};               //加速度计协方差计算队列
+float Px = 1, Rx, Kx, Sx, Vx, Qx;  // x轴卡尔曼变量
+float Py = 1, Ry, Ky, Sy, Vy, Qy;  // y轴卡尔曼变量
+float Pz = 1, Rz, Kz, Sz, Vz, Qz;  // z轴卡尔曼变量
 
 bool servo_driver(int Xin, int Yin) {  // Function to drive the servos
   if (Xin <= 180 and Xin >= 0) {
@@ -106,14 +103,15 @@ void WelcomeScreen() {
   u8x8.drawString(0, 0, "INITIALIZING...");
   delay(100);
   u8x8.draw2x2String(0, 1, "STARTRCK");
+  u8x8.drawString(0, 3, "PLEASE WAIT");
   delay(200);
   u8x8.clear();
+  u8x8.drawString(0, 0, "INITIALIZING...");
   u8x8.drawString(0, 1, "SERVO READY!");
   u8x8.drawString(0, 2, "MPU6050 READY!");
   u8x8.drawString(0, 3, "SYSTEM READY!");
   delay(1000);
   u8x8.print("\f");
-
   u8x8.clearDisplay();
   u8x8log.setRedrawMode(0);
 }
@@ -130,67 +128,6 @@ void oledDisplay121(String str1, String str2, String str3) {
   u8x8.draw2x2String(0, 1, str2.c_str());
   u8x8.drawString(0, 3, str3.c_str());
 }
-
-void Mode1() {
-  oledDisplay111("MANUAL MODE", "X POS: " + String(Xin),
-                 "Y POS: " + String(Yin), "WORKING");
-  Xin = map(analogRead(pinX), 0, 1023, 0, 360);
-  Yin = map(analogRead(pinY), 0, 1023, 0, 360);
-  servo_driver(Xin, Yin);
-}
-
-void Mode2() {
-  if (WirelessSerial) {
-    ZigbeeSerial.println("Enable Wireless Mode");
-    String a;
-    int count = 0;
-    if (ZigbeeSerial.available()) {
-      char c = ZigbeeSerial.read();
-      while (c != '!' && count < 100) {
-        a += c;
-        count++;
-        Serial.print(c);
-        c = ZigbeeSerial.read();
-      }
-    }
-    if (a.length() > 0) {
-      String value1, value2;
-      for (int i = 0; i < a.length(); i++) {
-        if (a.substring(i, i + 1) == ",") {
-          value2 = a.substring(0, i);
-          value1 = a.substring(i + 1);
-          break;
-        }
-      }
-      Xin = value1.toInt();
-      Yin = value2.toInt();
-    }
-  } else {
-    if (Serial.available() > 0) {
-      String a = Serial.readString();
-      String value1, value2;
-      for (int i = 0; i < a.length(); i++) {
-        if (a.substring(i, i + 1) == ",") {
-          value2 = a.substring(0, i);
-          value1 = a.substring(i + 1);
-          break;
-        }
-      }
-      Xin = value1.toInt();
-      Yin = value2.toInt();
-    }
-  }
-  String Stat;
-  if (WirelessSerial) {
-    Stat = "WIRELESS MODE";
-  } else {
-    Stat = "SERIAL MODE";
-  }
-  oledDisplay111("SERIAL MODE", "RECEIVE X: " + String(Xin),
-                 "RECEIVE Y: " + String(Yin), Stat);
-}
-
-void Mode3() { oledDisplay121("POINTER MODE", "POINTING", "WORKING"); }
 
 void mpuData() {
   mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
@@ -327,12 +264,78 @@ void calcMotion() {
 
   /* kalman end */
 
-  Serial.print(agx);
-  Serial.print(",");
-  Serial.print(agy);
-  Serial.print(",");
-  Serial.print(agz);
-  Serial.println();
+  // Serial.print(agx);
+  // Serial.print(",");
+  // Serial.print(agy);
+  // Serial.print(",");
+  // Serial.print(agz);
+  // Serial.println();
+}
+
+void Mode1() {
+  oledDisplay111("MANUAL MODE", "X POS: " + String(Xin),
+                 "Y POS: " + String(Yin), "WORKING");
+  Xin = map(analogRead(pinX), 0, 1023, 0, 360);
+  Yin = map(analogRead(pinY), 0, 1023, 0, 360);
+  servo_driver(Xin, Yin);
+}
+
+void Mode2() {
+  if (WirelessSerial) {
+    String a;
+    int count = 0;
+    if (ZigbeeSerial.available()) {
+      ZigbeeSerial.println("Client Received Message!");
+      char c = ZigbeeSerial.read();
+      while (c != '!' && count < 100) {
+        a += c;
+        count++;
+        Serial.print(c);
+        c = ZigbeeSerial.read();
+      }
+    }
+    if (a.length() > 0) {
+      String value1, value2;
+      for (int i = 0; i < a.length(); i++) {
+        if (a.substring(i, i + 1) == ",") {
+          value2 = a.substring(0, i);
+          value1 = a.substring(i + 1);
+          break;
+        }
+      }
+      Xin = value1.toInt();
+      Yin = value2.toInt();
+    }
+  } else {
+    if (Serial.available() > 0) {
+      String a = Serial.readString();
+      String value1, value2;
+      for (int i = 0; i < a.length(); i++) {
+        if (a.substring(i, i + 1) == ",") {
+          value2 = a.substring(0, i);
+          value1 = a.substring(i + 1);
+          break;
+        }
+      }
+      Xin = value1.toInt();
+      Yin = value2.toInt();
+    }
+  }
+  servo_driver(Xin, Yin);
+  String Stat;
+  if (WirelessSerial) {
+    Stat = "WIRELESS MODE";
+  } else {
+    Stat = "SERIAL MODE";
+  }
+  oledDisplay111("SERIAL MODE", "RECEIVE X: " + String(Xin),
+                 "RECEIVE Y: " + String(Yin), Stat);
+}
+
+void Mode3() {
+  oledDisplay121("POINTER MODE", "POINTING", "INITIALIZNG");
+  calcMotion();
+  servo_driver(agx, agy);  // Not tested yet!
 }
 
 void setup() {  // Setup function
@@ -363,7 +366,6 @@ void setup() {  // Setup function
   // Serial.println(mpu.testConnection());
 
   delay(200);
-  // oledDisplay121("StarTracker", "Complete", "Wait for command.");
 }
 
 void loop() {
@@ -381,7 +383,7 @@ void loop() {
     Mode = "Wireless";
   }
 
-  Mode3();
+  Mode2();
 
   delay(50);
   mainCount++;
