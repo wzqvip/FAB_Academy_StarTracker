@@ -234,7 +234,9 @@ int8_t I2Cdev::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8
                 useWire->beginTransmission(devAddr);
                 useWire->send(regAddr);
                 useWire->endTransmission();
+                useWire->beginTransmission(devAddr);
                 useWire->requestFrom((uint8_t)devAddr, (uint8_t)min((int)length - k, I2CDEVLIB_WIRE_BUFFER_LENGTH));
+
                 for (; useWire->available() && (timeout == 0 || millis() - t1 < timeout); count++) {
                     data[count] = useWire->receive();
                     #ifdef I2CDEV_SERIAL_DEBUG
@@ -242,6 +244,8 @@ int8_t I2Cdev::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8
                         if (count + 1 < length) Serial.print(" ");
                     #endif
                 }
+
+                useWire->endTransmission();
             }
         #elif (ARDUINO == 100)
             // Arduino v1.0.0, Wire library
@@ -254,7 +258,9 @@ int8_t I2Cdev::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8
                 useWire->beginTransmission(devAddr);
                 useWire->write(regAddr);
                 useWire->endTransmission();
+                useWire->beginTransmission(devAddr);
                 useWire->requestFrom((uint8_t)devAddr, (uint8_t)min((int)length - k, I2CDEVLIB_WIRE_BUFFER_LENGTH));
+        
                 for (; useWire->available() && (timeout == 0 || millis() - t1 < timeout); count++) {
                     data[count] = useWire->read();
                     #ifdef I2CDEV_SERIAL_DEBUG
@@ -262,6 +268,8 @@ int8_t I2Cdev::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8
                         if (count + 1 < length) Serial.print(" ");
                     #endif
                 }
+        
+                useWire->endTransmission();
             }
         #elif (ARDUINO > 100)
             // Arduino v1.0.1+, Wire library
@@ -274,7 +282,9 @@ int8_t I2Cdev::readBytes(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint8
                 useWire->beginTransmission(devAddr);
                 useWire->write(regAddr);
                 useWire->endTransmission();
+                useWire->beginTransmission(devAddr);
                 useWire->requestFrom((uint8_t)devAddr, (uint8_t)min((int)length - k, I2CDEVLIB_WIRE_BUFFER_LENGTH));
+        
                 for (; useWire->available() && (timeout == 0 || millis() - t1 < timeout); count++) {
                     data[count] = useWire->read();
                     #ifdef I2CDEV_SERIAL_DEBUG
@@ -346,6 +356,7 @@ int8_t I2Cdev::readWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint1
                 useWire->beginTransmission(devAddr);
                 useWire->send(regAddr);
                 useWire->endTransmission();
+                useWire->beginTransmission(devAddr);
                 useWire->requestFrom(devAddr, (uint8_t)(length * 2)); // length=words, this wants bytes
     
                 bool msb = true; // starts with MSB, then LSB
@@ -364,6 +375,8 @@ int8_t I2Cdev::readWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint1
                     }
                     msb = !msb;
                 }
+
+                useWire->endTransmission();
             }
         #elif (ARDUINO == 100)
             // Arduino v1.0.0, Wire library
@@ -376,6 +389,7 @@ int8_t I2Cdev::readWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint1
                 useWire->beginTransmission(devAddr);
                 useWire->write(regAddr);
                 useWire->endTransmission();
+                useWire->beginTransmission(devAddr);
                 useWire->requestFrom(devAddr, (uint8_t)(length * 2)); // length=words, this wants bytes
     
                 bool msb = true; // starts with MSB, then LSB
@@ -394,6 +408,8 @@ int8_t I2Cdev::readWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint1
                     }
                     msb = !msb;
                 }
+        
+                useWire->endTransmission();
             }
         #elif (ARDUINO > 100)
             // Arduino v1.0.1+, Wire library
@@ -406,6 +422,7 @@ int8_t I2Cdev::readWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint1
                 useWire->beginTransmission(devAddr);
                 useWire->write(regAddr);
                 useWire->endTransmission();
+                useWire->beginTransmission(devAddr);
                 useWire->requestFrom(devAddr, (uint8_t)(length * 2)); // length=words, this wants bytes
         
                 bool msb = true; // starts with MSB, then LSB
@@ -424,6 +441,8 @@ int8_t I2Cdev::readWords(uint8_t devAddr, uint8_t regAddr, uint8_t length, uint1
                     }
                     msb = !msb;
                 }
+        
+                useWire->endTransmission();
             }
         #endif
 
