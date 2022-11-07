@@ -1,5 +1,4 @@
 #include <Arduino.h>
-// #include <MPU6050.h>
 #include <I2Cdev.h>
 #include <MPU6050_6Axis_MotionApps20.h>
 #include <Servo.h>
@@ -10,6 +9,8 @@
 #define I2C_ADDRESS 0x3C
 #define U8LOG_WIDTH 16
 #define U8LOG_HEIGHT 4
+
+#define Slave (1)  // Use this to define if the Arduino is the master or slave
 
 // Define Pin Usage
 const int servoXPin = 9;
@@ -55,215 +56,228 @@ uint8_t u8log_buffer[U8LOG_WIDTH * U8LOG_HEIGHT];
 U8X8LOG u8x8log;
 
 bool servo_driver(int Xin, int Yin) {  // Function to drive the servos
-  if (Xin <= 180 and Xin >= 0) {
-    int xTemp = 180 - Xin;
-    if (abs(xTemp - servoX.read()) > 5) {
-      X = xTemp;
+    if (Xin <= 180 and Xin >= 0) {
+        int xTemp = 180 - Xin;
+        if (abs(xTemp - servoX.read()) > 5) {
+            X = xTemp;
+        }
+        int yTemp = 180 - Yin;
+        if (abs(yTemp - servoY.read()) > 5) {
+            Y = yTemp;
+        }
+    } else if (Xin <= 360) {
+        int xTemp = 360 - Xin;
+        if (abs(xTemp - servoX.read()) > 5) {
+            X = xTemp;
+        }
+        int yTemp = Yin;
+        if (abs(yTemp - servoY.read()) > 5) {
+            Y = yTemp;
+        }
+    } else {
+        X = 0;
+        Y = 0;
+        return false;
     }
-    int yTemp = 180 - Yin;
-    if (abs(yTemp - servoY.read()) > 5) {
-      Y = yTemp;
-    }
-  } else if (Xin <= 360) {
-    int xTemp = 360 - Xin;
-    if (abs(xTemp - servoX.read()) > 5) {
-      X = xTemp;
-    }
-    int yTemp = Yin;
-    if (abs(yTemp - servoY.read()) > 5) {
-      Y = yTemp;
-    }
-  } else {
-    X = 0;
-    Y = 0;
-    return false;
-  }
-  servoX.write(X);
-  servoY.write(Y);
-  return true;
+    servoX.write(X);
+    servoY.write(Y);
+    return true;
 }
 
 void WelcomeScreen() {
-  u8x8.print("\f");
-  u8x8log.setRedrawMode(1);
-  u8x8.drawString(0, 0, "INITIALIZING...");
-  delay(100);
-  u8x8.draw2x2String(0, 1, "STARTRCK");
-  u8x8.drawString(0, 3, "PLEASE WAIT");
-  delay(200);
-  u8x8.clear();
-  u8x8.drawString(0, 0, "INITIALIZING...");
-  u8x8.drawString(0, 1, "SERVO READY!");
-  u8x8.drawString(0, 2, "MPU6050 READY!");
-  u8x8.drawString(0, 3, "SYSTEM READY!");
-  delay(1000);
-  u8x8.print("\f");
-  u8x8.clearDisplay();
-  u8x8log.setRedrawMode(0);
+    u8x8.print("\f");
+    u8x8log.setRedrawMode(1);
+    u8x8.drawString(0, 0, "INITIALIZING...");
+    delay(100);
+    u8x8.draw2x2String(0, 1, "STARTRCK");
+    u8x8.drawString(0, 3, "PLEASE WAIT");
+    delay(200);
+    u8x8.clear();
+    u8x8.drawString(0, 0, "INITIALIZING...");
+    u8x8.drawString(0, 1, "SERVO READY!");
+    u8x8.drawString(0, 2, "MPU6050 READY!");
+    u8x8.drawString(0, 3, "SYSTEM READY!");
+    delay(1000);
+    u8x8.print("\f");
+    u8x8.clearDisplay();
+    u8x8log.setRedrawMode(0);
 }
 
 void oledDisplay111(String str1, String str2, String str3, String str4) {
-  u8x8.drawString(0, 0, str1.c_str());
-  u8x8.drawString(0, 1, str2.c_str());
-  u8x8.drawString(0, 2, str3.c_str());
-  u8x8.drawString(0, 3, str4.c_str());
+    u8x8.drawString(0, 0, str1.c_str());
+    u8x8.drawString(0, 1, str2.c_str());
+    u8x8.drawString(0, 2, str3.c_str());
+    u8x8.drawString(0, 3, str4.c_str());
 }
 
 void oledDisplay121(String str1, String str2, String str3) {
-  u8x8.drawString(0, 0, str1.c_str());
-  u8x8.draw2x2String(0, 1, str2.c_str());
-  u8x8.drawString(0, 3, str3.c_str());
+    u8x8.drawString(0, 0, str1.c_str());
+    u8x8.draw2x2String(0, 1, str2.c_str());
+    u8x8.drawString(0, 3, str3.c_str());
 }
 
 void Mode1() {
-  oledDisplay111("MANUAL MODE", "X POS: " + String(Xin),
-                 "Y POS: " + String(Yin), "WORKING");
-  Xin = map(analogRead(pinX), 0, 1023, 0, 360);
-  Yin = map(analogRead(pinY), 0, 1023, 0, 360);
-  servo_driver(Xin, Yin);
+    oledDisplay111("MANUAL MODE", "X POS: " + String(Xin),
+                   "Y POS: " + String(Yin), "WORKING");
+    Xin = map(analogRead(pinX), 0, 1023, 0, 360);
+    Yin = map(analogRead(pinY), 0, 1023, 0, 360);
+    servo_driver(Xin, Yin);
 }
 
 void Mode2() {
-  if (WirelessSerial) {
-    String a;
-    int count = 0;
-    if (ZigbeeSerial.available()) {
-      ZigbeeSerial.println("Client Received Message!");
-      char c = ZigbeeSerial.read();
-      while (c != '!' && count < 100) {
-        a += c;
-        count++;
-        Serial.print(c);
-        c = ZigbeeSerial.read();
-      }
-    }
-    if (a.length() > 0) {
-      String value1, value2;
-      for (int i = 0; i < a.length(); i++) {
-        if (a.substring(i, i + 1) == ",") {
-          value2 = a.substring(0, i);
-          value1 = a.substring(i + 1);
-          break;
+    if (WirelessSerial) {
+        String a;
+        int count = 0;
+        if (ZigbeeSerial.available()) {
+            ZigbeeSerial.println("Client Received Message!");
+            char c = ZigbeeSerial.read();
+            while (c != '!' && count < 100) {
+                a += c;
+                count++;
+                Serial.print(c);
+                c = ZigbeeSerial.read();
+            }
         }
-      }
-      Xin = value1.toInt();
-      Yin = value2.toInt();
-    }
-  } else {
-    if (Serial.available() > 0) {
-      String a = Serial.readString();
-      String value1, value2;
-      for (int i = 0; i < a.length(); i++) {
-        if (a.substring(i, i + 1) == ",") {
-          value2 = a.substring(0, i);
-          value1 = a.substring(i + 1);
-          break;
+        if (a.length() > 0) {
+            String value1, value2;
+            for (int i = 0; i < a.length(); i++) {
+                if (a.substring(i, i + 1) == ",") {
+                    value2 = a.substring(0, i);
+                    value1 = a.substring(i + 1);
+                    break;
+                }
+            }
+            Xin = value1.toInt();
+            Yin = value2.toInt();
         }
-      }
-      Xin = value1.toInt();
-      Yin = value2.toInt();
+    } else {
+        if (Serial.available() > 0) {
+            String a = Serial.readString();
+            String value1, value2;
+            for (int i = 0; i < a.length(); i++) {
+                if (a.substring(i, i + 1) == ",") {
+                    value2 = a.substring(0, i);
+                    value1 = a.substring(i + 1);
+                    break;
+                }
+            }
+            Xin = value1.toInt();
+            Yin = value2.toInt();
+        }
     }
-  }
-  servo_driver(Xin, Yin);
-  String Stat;
-  if (WirelessSerial) {
-    Stat = "WIRELESS MODE";
-  } else {
-    Stat = "SERIAL MODE";
-  }
-  oledDisplay111("SERIAL MODE", "RECEIVE X: " + String(Xin),
-                 "RECEIVE Y: " + String(Yin), Stat);
+    servo_driver(Xin, Yin);
+    String Stat;
+    if (WirelessSerial) {
+        Stat = "WIRELESS MODE";
+    } else {
+        Stat = "SERIAL MODE";
+    }
+    oledDisplay111("SERIAL MODE", "RECEIVE X: " + String(Xin),
+                   "RECEIVE Y: " + String(Yin), Stat);
 }
 
 void Mode3() {
-  if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
-    mpu.dmpGetQuaternion(&q, fifoBuffer);
-    mpu.dmpGetGravity(&gravity, &q);
-    mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-    Serial.print("ypr\t");
-    Serial.print(ypr[0] * 180 / M_PI);
-    Serial.print("\t");
-    Serial.print(ypr[1] * 180 / M_PI);
-    Serial.print("\t");
-    Serial.println(ypr[2] * 180 / M_PI);
+    if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
+        mpu.dmpGetQuaternion(&q, fifoBuffer);
+        mpu.dmpGetGravity(&gravity, &q);
+        mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+        // Serial.print("ypr\t");
+        // Serial.print(ypr[0] * 180 / M_PI);
+        // Serial.print("\t");
+        // Serial.print(ypr[1] * 180 / M_PI);
+        // Serial.print("\t");
+        // Serial.println(ypr[2] * 180 / M_PI);
 
-    Xin = map(ypr[2] * 180 / M_PI, -180, 180, 0, 360);
-    Yin = map(ypr[0] * 180 / M_PI, -180, 180, 0, 360);
-    servo_driver(Xin, Yin);
-    oledDisplay111("POINTING MODE", "EULA X: " + String(ypr[2] * 180 / M_PI),
-                   "EULA Y: " + String(ypr[0] * 180 / M_PI),
-                   "ROUTATE: " + String(ypr[1] * 180 / M_PI));
-  }
+        Serial.print("$");
+        Serial.print(ypr[0] * 180 / M_PI);
+        Serial.print(" ");
+        Serial.print(ypr[1] * 180 / M_PI);
+        Serial.print(" ");
+        Serial.print(ypr[2] * 180 / M_PI);
+        Serial.println(";");
+    }
+    delay(150);
+    ZigbeeSerial.print(ypr[0] * 180 / M_PI);
+    ZigbeeSerial.print(",");
+    ZigbeeSerial.print(-ypr[2] * 180 / M_PI);
+    ZigbeeSerial.println("!");
 }
 
 void setup() {  // Setup function
-  Wire.begin();
-  Serial.begin(115200);
-  while (!Serial) {
-  }
-  Serial.println("Serial Started");
-  ZigbeeSerial.begin(115200);
-  ZigbeeSerial.println("ZigbeeSerial Started");
+    Wire.begin();
+    Serial.begin(115200);
+    while (!Serial) {
+    }
+    Serial.println("Serial Started");
+    ZigbeeSerial.begin(115200);
+    ZigbeeSerial.println("ZigbeeSerial Started");
 
-  pinMode(servoXPin, OUTPUT);
-  pinMode(servoYPin, OUTPUT);
-  pinMode(pinSW, INPUT);
+#ifndef Slave
+    Serial.println("Master Mode");
+    pinMode(servoXPin, OUTPUT);
+    pinMode(servoYPin, OUTPUT);
+    pinMode(pinSW, INPUT);
 
-  u8x8.begin();
-  u8x8.setFont(u8x8_font_chroma48medium8_u);
+    u8x8.begin();
+    u8x8.setFont(u8x8_font_chroma48medium8_u);
 
-  u8x8log.begin(u8x8, U8LOG_WIDTH, U8LOG_HEIGHT, u8log_buffer);
-  WelcomeScreen();
+    u8x8log.begin(u8x8, U8LOG_WIDTH, U8LOG_HEIGHT, u8log_buffer);
+    WelcomeScreen();
 
-  servoX.attach(servoXPin, ServoMin, ServoMax);
-  servoY.attach(servoYPin, ServoMin, ServoMax);
-  Xin = 0;
-  Yin = 0;
-  servoX.write(Xin);
-  servoY.write(Yin);
+    servoX.attach(servoXPin, ServoMin, ServoMax);
+    servoY.attach(servoYPin, ServoMin, ServoMax);
+    Xin = 0;
+    Yin = 0;
+    servoX.write(Xin);
+    servoY.write(Yin);
+#endif  // Master
 
-  mpu.initialize();
-  if (mpu.testConnection()) {
-    Serial.println("MPU6050 connection successful");
-  } else {
-    Serial.println("MPU6050 connection failed");
-  };
-  mpu.dmpInitialize();
-  mpu.CalibrateAccel(6);
-  mpu.CalibrateGyro(6);
-  mpu.PrintActiveOffsets();
-  mpu.setDMPEnabled(true);
+#ifdef Slave
+    ZigbeeSerial.println("Slave Mode");
+    mpu.initialize();
+    if (mpu.testConnection()) {
+        Serial.println("MPU6050 connection successful");
+    } else {
+        Serial.println("MPU6050 connection failed");
+    };
+    mpu.dmpInitialize();
+    mpu.CalibrateAccel(6);
+    mpu.CalibrateGyro(6);
+    mpu.PrintActiveOffsets();
+    mpu.setDMPEnabled(true);
+#endif /* Slave */
 
-  delay(200);
+    delay(200);
 }
 
 void loop() {
-  if (ModeSelect == 0) {  // Normal Mode
-    SW = analogRead(pinSW);
-  } else {  // Debug Mode
-    SW = ModeSelect;
-  }
+#ifndef Slave
+    if (ModeSelect == 0) {  // Normal Mode
+        SW = analogRead(pinSW);
+    } else {  // Debug Mode
+        SW = ModeSelect;
+    }
 
-  // if (SW < 300) {  // Manual Mode
-  //   Mode = "Manual";
-  //   Mode1();
-  // } else if (SW < 700) {  // Serial Mode
-  //   Mode = "Serial";
-  //   Mode2();
-  // } else if (SW < 1023) {  // Point Mode
-  //   Mode = "Pointer";
-  //   Mode3();
-  // }
+    if (SW < 500) {  // Manual Mode
+        Mode = "Manual";
+        Mode1();
+    } else {
+        Mode = "Serial";
+        Mode2();
+    }
 
-  Mode3();
+    delay(50);
+    mainCount++;
+    if (mainCount >= 10) {
+        mainCount = 0;
+        u8x8log.print("\f");
+        Serial.println("Yaw: " + String(Xin) + " Pitch: " + String(Yin) +
+                       " Status: " + Mode);
+        delay(100);
+    }
+#endif
 
-  // delay(50);
-  // mainCount++;
-  // if (mainCount >= 10) {
-  //   mainCount = 0;
-  //   u8x8log.print("\f");
-  //   Serial.println("Yaw: " + String(Xin) + " Pitch: " + String(Yin) +
-  //                  " Status: " + Mode);
-  //   delay(100);
-  // }
+#ifdef Slave
+    Mode3();
+#endif
 }
