@@ -155,7 +155,7 @@ void ManualDriver() {
   oledDisplay111("MANUAL MODE", "X POS: " + String(Xin),
                  "Y POS: " + String(Yin), "WORKING");
   Xin = map(analogRead(pinX), 0, 1023, 0, 360);
-  Yin = map(analogRead(pinY), 0, 1023, 0, 360);
+  Yin = map(analogRead(pinY), 0, 1023, 0, 180);
   servo_driver(Xin, Yin);
 }
 
@@ -310,6 +310,18 @@ void loop() {
 #ifndef Slave
 
   servo_driver(0, 90);
+
+  //   servo_driver(90, 90);
+  //   delay(2000);
+
+  //   servo_driver(180, 180);
+  //   delay(2000);
+
+  //   servo_driver(45, 45);
+  //   delay(2000);
+
+  //   servo_driver(135, 135);
+  //   delay(2000);
 
   //   PlatformFlat();
 
