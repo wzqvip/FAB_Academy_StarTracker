@@ -308,23 +308,6 @@ void setup() {  // Setup function
 
 void loop() {
 #ifndef Slave
-
-  servo_driver(0, 90);
-
-  //   servo_driver(90, 90);
-  //   delay(2000);
-
-  //   servo_driver(180, 180);
-  //   delay(2000);
-
-  //   servo_driver(45, 45);
-  //   delay(2000);
-
-  //   servo_driver(135, 135);
-  //   delay(2000);
-
-  //   PlatformFlat();
-
 //   int btnState = digitalRead(pinSW);
 //   if (btnState == LOW) {
 //     if (millis() - lastButtonPress > 50) {
