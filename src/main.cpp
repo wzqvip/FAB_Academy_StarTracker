@@ -10,15 +10,16 @@
 #define U8LOG_WIDTH 16
 #define U8LOG_HEIGHT 4
 
-#define Slave (1)  // Use this to define if the Arduino is the master or slave
+//#define Slave (1)  // Use this to define if the Arduino is the master or slave
 
 // Define Pin Usage
 const int servoXPin = 9;
 const int servoYPin = 10;
 
-const int Encoder_A = 4;
-const int Encoder_B = 5;
-const int Encoder_SW = 6;
+// Failed to drive it. Suck Arduino.
+// const int Encoder_CLK = 2;
+// const int Encoder_DT = 3;
+// const int Encoder_SW = 6;
 
 const int pinSW = A0;
 const int pinX = A1;
@@ -28,14 +29,19 @@ const int softTX = 3;
 
 // Initalize variables
 int Xin, Yin, X, Y, SW;
-bool Status = false;
+int Xcal = 0;
+int Ycal = 0;
+// bool Status = false;
 int mainCount = 0;
 Servo servoX;
 Servo servoY;
-bool ManualMode = false;
+bool ManualMode = true;
 
-int prevOut = 0;
-int encoderCount = 0;
+// int counter = 0;
+// int currentStateCLK;
+// int lastStateCLK;
+// String currentDir = "";
+unsigned long lastButtonPress = 0;
 
 const int ServoMin = 470;
 const int ServoMax = 2500;
@@ -125,7 +131,27 @@ void oledDisplay121(String str1, String str2, String str3) {
   u8x8.drawString(0, 3, str3.c_str());
 }
 
-void Mode1() {
+// void updateEncoder() {
+//   currentStateCLK = digitalRead(Encoder_CLK);
+//   if (currentStateCLK != lastStateCLK && currentStateCLK == 1) {
+//     if (digitalRead(Encoder_DT) != currentStateCLK) {
+//       counter--;
+//       if (counter < 0) {
+//         counter = 180;
+//       }
+//     } else {
+//       counter++;
+//       if (counter > 180) {
+//         counter = 0;
+//       }
+//     }
+//     Serial.println("DETACT:" + String(counter));
+//   }
+//   lastStateCLK = currentStateCLK;
+//   servo_driver(Xin, Yin);
+// }
+
+void ManualDriver() {
   oledDisplay111("MANUAL MODE", "X POS: " + String(Xin),
                  "Y POS: " + String(Yin), "WORKING");
   Xin = map(analogRead(pinX), 0, 1023, 0, 360);
@@ -133,7 +159,7 @@ void Mode1() {
   servo_driver(Xin, Yin);
 }
 
-void Mode2() {
+void SerialDriver() {
   if (WirelessSerial) {
     String a;
     int count = 0;
@@ -185,7 +211,7 @@ void Mode2() {
                  "RECEIVE Y: " + String(Yin), Stat);
 }
 
-void Mode3() {
+void PositionSend() {
   if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
     mpu.dmpGetQuaternion(&q, fifoBuffer);
     mpu.dmpGetGravity(&gravity, &q);
@@ -204,7 +230,26 @@ void Mode3() {
   Stat += ",";
   Stat += String(-ypr[2] * 180 / M_PI);
   Stat += "!";
+  ZigbeeSerial.println(Stat);
 }
+
+// void PlatformFlat() {
+//   if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
+//     mpu.dmpGetQuaternion(&q, fifoBuffer);
+//     mpu.dmpGetGravity(&gravity, &q);
+//     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+//     Serial.print("$");
+//     Serial.print(ypr[0] * 180 / M_PI);
+//     Serial.print(" ");
+//     Serial.print(ypr[1] * 180 / M_PI);
+//     Serial.print(" ");
+//     Serial.print(ypr[2] * 180 / M_PI);
+//     Serial.println(";");
+//   }
+//   delay(1);
+//   Xcal = ypr[0] * 180 / M_PI;
+//   Ycal = -ypr[2] * 180 / M_PI;
+// }
 
 void setup() {  // Setup function
   Wire.begin();
@@ -220,22 +265,27 @@ void setup() {  // Setup function
   pinMode(servoXPin, OUTPUT);
   pinMode(servoYPin, OUTPUT);
   pinMode(pinSW, INPUT);
-  pinMode(Encoder_A, INPUT);
-  pinMode(Encoder_B, INPUT);
-  pinMode(Encoder_SW, INPUT);
+  //   pinMode(Encoder_CLK, INPUT);
+  //   pinMode(Encoder_DT, INPUT);
+  //   pinMode(Encoder_SW, INPUT_PULLUP);
 
   u8x8.begin();
   u8x8.setFont(u8x8_font_chroma48medium8_u);
-
   u8x8log.begin(u8x8, U8LOG_WIDTH, U8LOG_HEIGHT, u8log_buffer);
   WelcomeScreen();
 
   servoX.attach(servoXPin, ServoMin, ServoMax);
   servoY.attach(servoYPin, ServoMin, ServoMax);
-  Xin = 0;
-  Yin = 0;
+  X = 0;
+  Y = 90;
+  Xin = X;
+  Yin = Y;
   servoX.write(Xin);
   servoY.write(Yin);
+
+//   lastStateCLK = digitalRead(Encoder_CLK);
+//   attachInterrupt(0, updateEncoder, CHANGE);
+//   attachInterrupt(1, updateEncoder, CHANGE);
 #endif  // Master
 
 #ifdef Slave
@@ -259,30 +309,55 @@ void setup() {  // Setup function
 void loop() {
 #ifndef Slave
 
-  if (ModeSelect == 0) {  // Normal Mode
-    if (digitalRead(pinSW) == LOW) {
-      Mode1();
-      delay(10);
-    } else {
-      Mode2();
-      delay(10);
-    }
-  } else {  // Debug Mode
-    SW = ModeSelect;
-  }
+  servo_driver(0, 90);
 
-  delay(50);
-  mainCount++;
-  if (mainCount >= 10) {
-    mainCount = 0;
-    u8x8log.print("\f");
-    Serial.println("Yaw: " + String(Xin) + " Pitch: " + String(Yin) +
-                   " Status: " + Mode);
-    delay(100);
-  }
+  //   PlatformFlat();
+
+//   int btnState = digitalRead(pinSW);
+//   if (btnState == LOW) {
+//     if (millis() - lastButtonPress > 50) {
+//       lastButtonPress = millis();
+//       if (ManualMode) {
+//         ManualMode = false;
+//       } else {
+//         ManualMode = true;
+//       }
+//     }
+//   }
+
+//   if (ModeSelect == 0) {  // Normal Mode
+//     if (ManualMode) {
+//       ManualDriver();
+//       delay(1);
+//     } else {
+//       SerialDriver();
+//       delay(10);
+//       //   if (btnState == LOW) {
+//       //     ManualMode = true;
+//       //   }
+//     }
+//   } else {  // Debug Mode
+//     if (ManualMode) {
+//       ManualDriver();
+//       delay(1);
+//     } else {
+//       SerialDriver();
+//       delay(10);
+//     }
+//   }
+
+//   delay(1);
+//   mainCount++;
+//   if (mainCount >= 10) {
+//     mainCount = 0;
+//     u8x8log.print("\f");
+//     Serial.println("Yaw: " + String(Xin) + " Pitch: " + String(Yin) +
+//                    " Status: " + ManualMode);
+//     delay(1);
+//   }
 #endif
 
 #ifdef Slave
-  Mode3();
+  PositionSend();
 #endif
 }
