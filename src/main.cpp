@@ -43,6 +43,8 @@ const int ModeSelect = 0;
 const int WirelessSerial = 1;
 String Mode;
 
+SoftwareSerial ZigbeeSerial(softRX, softTX);
+
 U8X8_SSD1306_128X32_UNIVISION_SW_I2C u8x8(/* clock=*/SCL, /* data=*/SDA,
                                           /* reset=*/U8X8_PIN_NONE);
 uint8_t u8log_buffer[U8LOG_WIDTH * U8LOG_HEIGHT];
@@ -137,7 +139,7 @@ void SerialDriver() {
         }
         if (a.length() > 0) {
             String value1, value2;
-            for (int i = 0; i < a.length(); i++) {
+            for (unsigned int i = 0; i < a.length(); i++) {
                 if (a.substring(i, i + 1) == ",") {
                     value2 = a.substring(0, i);
                     value1 = a.substring(i + 1);
@@ -151,7 +153,7 @@ void SerialDriver() {
         if (Serial.available() > 0) {
             String a = Serial.readString();
             String value1, value2;
-            for (int i = 0; i < a.length(); i++) {
+            for (unsigned int i = 0; i < a.length(); i++) {
                 if (a.substring(i, i + 1) == ",") {
                     value2 = a.substring(0, i);
                     value1 = a.substring(i + 1);
@@ -184,6 +186,8 @@ Quaternion q;
 VectorFloat gravity;
 float ypr[3];
 
+SoftwareSerial ZigbeeSerial(softRX, softTX);
+
 void PositionSend() {
     if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
         mpu.dmpGetQuaternion(&q, fifoBuffer);
@@ -207,7 +211,6 @@ void PositionSend() {
 }
 #endif
 
-SoftwareSerial ZigbeeSerial(softRX, softTX);
 
 void setup() {  // Setup function
     Wire.begin();
