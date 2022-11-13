@@ -71,6 +71,11 @@ bool servo_driver(int Xin, int Yin) {  // Function to drive the servos
         Y = 0;
         return false;
     }
+    if (Y > 180) {
+        Y = 180;
+    } else if (Y < 0) {
+        Y = 0;
+    }
     servoX.write(X);
     servoY.write(Y);
     return true;
@@ -255,26 +260,26 @@ void setup() {  // Setup function
 
 void loop() {
 #ifndef Slave
-      if (ModeSelect == 0) {  // Normal Mode
+    if (ModeSelect == 0) {  // Normal Mode
         if (ManualMode) {
-          ManualDriver();
-          delay(1);
+            ManualDriver();
+            delay(1);
         } else {
-          SerialDriver();
-          delay(10);
-          //   if (btnState == LOW) {
-          //     ManualMode = true;
-          //   }
+            SerialDriver();
+            delay(10);
+            //   if (btnState == LOW) {
+            //     ManualMode = true;
+            //   }
         }
-      } else {  // Debug Mode
+    } else {  // Debug Mode
         if (ManualMode) {
-          ManualDriver();
-          delay(1);
+            ManualDriver();
+            delay(1);
         } else {
-          SerialDriver();
-          delay(10);
+            SerialDriver();
+            delay(10);
         }
-      }
+    }
 
     // delay(1);
     // mainCount++;
