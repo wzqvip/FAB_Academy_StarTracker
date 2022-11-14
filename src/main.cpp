@@ -1,4 +1,4 @@
-//#define Slave (1)  // Use this to define if the Arduino is the master or slave
+#define Slave (1)  // Use this to define if the Arduino is the master or slave
 
 #include <Arduino.h>
 #include <I2Cdev.h>
@@ -33,7 +33,7 @@ int mainCount = 0;
 ServoSmooth servoX;
 ServoSmooth servoY;
 
-bool ManualMode = true;
+bool ManualMode = false;
 const int ServoMin = 470;
 const int ServoMax = 2500;
 /* There are three mode currenty .
@@ -44,7 +44,7 @@ const int ServoMax = 2500;
     Input the position and then track
 3. Pointer Mode
     Point by hand and it will follow your lead*/
-const int ModeSelect = 0;
+const int ModeSelect = 1;
 const int WirelessSerial = 1;
 String Mode;
 
@@ -123,14 +123,15 @@ void SerialDriver() {
         String a;
         int count = 0;
         if (ZigbeeSerial.available()) {
-            ZigbeeSerial.println("Client Received Message!");
+            // ZigbeeSerial.println("Client Received Message!");
+            Serial.println("Received Message!");
             char c = ZigbeeSerial.read();
             while (c != '!' && count < 100) {
                 a += c;
                 count++;
-                Serial.print(c);
                 c = ZigbeeSerial.read();
             }
+            Serial.println(a);
         }
         if (a.length() > 0) {
             String value1, value2;
@@ -146,6 +147,7 @@ void SerialDriver() {
         }
     } else {
         if (Serial.available() > 0) {
+            Serial.println("Received Message!");
             String a = Serial.readString();
             String value1, value2;
             for (unsigned int i = 0; i < a.length(); i++) {
@@ -180,6 +182,8 @@ uint8_t fifoBuffer[64];
 Quaternion q;
 VectorFloat gravity;
 float ypr[3];
+const int softRX = 2;
+const int softTX = 3;
 
 SoftwareSerial ZigbeeSerial(softRX, softTX);
 
@@ -195,14 +199,15 @@ void PositionSend() {
         Serial.print(" ");
         Serial.print(ypr[2] * 180 / M_PI);
         Serial.println(";");
+        delay(200);
+        String Stat = "";
+        Stat += String(ypr[0] * 180 / M_PI);
+        Stat += ",";
+        Stat += String(-ypr[2] * 180 / M_PI);
+        Stat += "!";
+        ZigbeeSerial.println(Stat);
+        Serial.print("Send Message: " + Stat);
     }
-    delay(200);
-    String Stat;
-    Stat += String(ypr[0] * 180 / M_PI);
-    Stat += ",";
-    Stat += String(-ypr[2] * 180 / M_PI);
-    Stat += "!";
-    ZigbeeSerial.println(Stat);
 }
 #endif
 
@@ -214,6 +219,7 @@ void setup() {  // Setup function
     Serial.println("Serial Started");
     ZigbeeSerial.begin(115200);
     ZigbeeSerial.println("ZigbeeSerial Started");
+    pinMode(LED_BUILTIN, OUTPUT);
 
 #ifndef Slave
     Serial.println("Master Mode");
@@ -252,6 +258,7 @@ void setup() {  // Setup function
 #endif  // Master
 
 #ifdef Slave
+    digitalWrite(LED_BUILTIN, LOW);
     ZigbeeSerial.println("Slave Mode");
     mpu.initialize();
     if (mpu.testConnection()) {
@@ -259,11 +266,14 @@ void setup() {  // Setup function
     } else {
         Serial.println("MPU6050 connection failed");
     };
+
     mpu.dmpInitialize();
     mpu.CalibrateAccel(6);
     mpu.CalibrateGyro(6);
     mpu.PrintActiveOffsets();
     mpu.setDMPEnabled(true);
+    digitalWrite(13, HIGH);
+    digitalWrite(LED_BUILTIN, HIGH);
 #endif /* Slave */
 
     delay(200);
@@ -305,5 +315,6 @@ void loop() {
 
 #ifdef Slave
     PositionSend();
+    digitalWrite(LED_BUILTIN, HIGH);
 #endif
 }
