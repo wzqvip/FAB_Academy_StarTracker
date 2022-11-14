@@ -51,11 +51,27 @@ uint8_t u8log_buffer[U8LOG_WIDTH * U8LOG_HEIGHT];
 U8X8LOG u8x8log;
 bool servo_driver(int Xin, int Yin) {  // Function to drive the servos
     if (Xin <= 180 and Xin >= 0) {
-        X = 180 - Xin;
-        Y = 180 - Yin;
+        int xTemp = 180 - Xin;
+        if (abs(xTemp - servoX.read()) > 3) {
+            X = xTemp;
+        }
+        int yTemp = 180 - Yin;
+        if (abs(yTemp - servoY.read()) > 3) {
+            Y = yTemp;
+        }
     } else if (Xin <= 360) {
-        X = 360 - Xin;
-        Y = Yin;
+        int xTemp = 360 - Xin;
+        if (abs(xTemp - servoX.read()) > 3) {
+            X = xTemp;
+        }
+        int yTemp = Yin;
+        if (abs(yTemp - servoY.read()) > 3) {
+            Y = yTemp;
+        }
+    } else {
+        X = 0;
+        Y = 0;
+        return false;
     }
     if (Yin > 180) {
         Y = 180;
@@ -104,7 +120,7 @@ void oledDisplay121(String str1, String str2, String str3) {
 void ManualDriver() {
     // oledDisplay111("MANUAL MODE", "X POS: " + String(Xin),
     //                "Y POS: " + String(Yin), "WORKING");
-    
+
     if (abs(tempX - analogRead(pinY)) > 3 or abs(tempY - analogRead(pinY)) > 3) {
         Xin = map(analogRead(pinX), 0, 1023, 0, 360);
         Yin = map(analogRead(pinY), 0, 1023, 0, 180);
