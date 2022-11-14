@@ -2,15 +2,21 @@
 
 #include <Arduino.h>
 #include <I2Cdev.h>
+#include <SPI.h>
 #include <Wire.h>
 
 #ifndef Slave
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 #include <ServoSmooth.h>
 #include <SoftwareSerial.h>
-#include <U8x8lib.h>
-#define I2C_ADDRESS 0x3C
-#define U8LOG_WIDTH 16
-#define U8LOG_HEIGHT 4
+
+#define SCREEN_WIDTH 128     // OLED display width, in pixels
+#define SCREEN_HEIGHT 32     // OLED display height, in pixels
+#define OLED_RESET -1        // Reset pin # (or -1 if sharing Arduino reset pin)
+#define SCREEN_ADDRESS 0x3C  ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
 // Define Pin Usage
 const int servoXPin = 9;
 const int servoYPin = 10;
@@ -42,75 +48,74 @@ const int ModeSelect = 0;
 const int WirelessSerial = 1;
 String Mode;
 
+bool rowed = false;
+
 SoftwareSerial ZigbeeSerial(softRX, softTX);
 
-U8X8_SSD1306_128X32_UNIVISION_SW_I2C u8x8(/* clock=*/SCL, /* data=*/SDA,
-                                          /* reset=*/U8X8_PIN_NONE);
-uint8_t u8log_buffer[U8LOG_WIDTH * U8LOG_HEIGHT];
-U8X8LOG u8x8log;
-
 bool servo_driver(int Xin, int Yin) {  // Function to drive the servos
-    servoX.tick();
-    servoY.tick();
+
     if (Xin <= 180 and Xin >= 0) {
         X = 180 - Xin;
         Y = 180 - Yin;
     } else if (Xin <= 360) {
         X = 360 - Xin;
         Y = Yin;
+    } else {
+        return false;
     }
-    if (Yin > 180) {
-        Y = 180;
-    }
-    if (Yin < 0) {
-        Y = 0;
-    }
-
     servoX.setTargetDeg(X);
     servoY.setTargetDeg(Y);
     return true;
 }
 
 void WelcomeScreen() {
-    u8x8.print("\f");
-    u8x8log.setRedrawMode(1);
-    u8x8.drawString(0, 0, "INITIALIZING...");
+    display.clearDisplay();
+
+    display.setTextSize(2);  // Draw 2X-scale text
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(10, 0);
+    display.println(F("Initializ Standby"));
+    display.display();  // Show initial text
     delay(100);
-    u8x8.draw2x2String(0, 1, "STARTRCK");
-    u8x8.drawString(0, 3, "PLEASE WAIT");
-    delay(200);
-    u8x8.clear();
-    u8x8.drawString(0, 0, "INITIALIZING...");
-    u8x8.drawString(0, 1, "SERVO READY!");
-    u8x8.drawString(0, 2, "MPU6050 READY!");
-    u8x8.drawString(0, 3, "SYSTEM READY!");
-    delay(1000);
-    u8x8.print("\f");
-    u8x8.clearDisplay();
-    u8x8log.setRedrawMode(0);
+
+    // Scroll in various directions, pausing in-between:
+    display.startscrollright(0x00, 0x0F);
+    delay(2500);
 }
 
 void oledDisplay111(String str1, String str2, String str3, String str4) {
-    u8x8.drawString(0, 0, str1.c_str());
-    u8x8.drawString(0, 1, str2.c_str());
-    u8x8.drawString(0, 2, str3.c_str());
-    u8x8.drawString(0, 3, str4.c_str());
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.setTextSize(1);
+    display.println((str1));
+    display.println((str2));
+    display.println((str3));
+    display.println((str4));
+    display.display();
 }
 
 void oledDisplay121(String str1, String str2, String str3) {
-    u8x8.drawString(0, 0, str1.c_str());
-    u8x8.draw2x2String(0, 1, str2.c_str());
-    u8x8.drawString(0, 3, str3.c_str());
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.println(str1);
+    display.setTextSize(2);
+    display.println(str2);
+    display.setTextSize(1);
+    display.println(str3);
+    display.display();
 }
 
 void ManualDriver() {
-    // oledDisplay111("MANUAL MODE", "X POS: " + String(Xin),
-    //                "Y POS: " + String(Yin), "WORKING");
+    oledDisplay111("MANUAL MODE", "X POS: " + String(Xin),
+                   "Y POS: " + String(Yin), "WORKING");
 
     Xin = map(analogRead(pinX), 0, 1023, 0, 360);
-    Yin = map(analogRead(pinY), 0, 1023, 0, 180);
-
-    servo_driver(Xin, Yin);
+    Yin = map(analogRead(pinY), 0, 1023, 0, 90);
+    if (mainCount % 10 == 0) {
+        servo_driver(Xin, Yin);
+    }
 }
 
 void SerialDriver() {
@@ -216,16 +221,22 @@ void setup() {  // Setup function
     pinMode(servoYPin, OUTPUT);
     pinMode(pinSW, INPUT);
 
-    u8x8.begin();
-    u8x8.setFont(u8x8_font_chroma48medium8_u);
-    u8x8log.begin(u8x8, U8LOG_WIDTH, U8LOG_HEIGHT, u8log_buffer);
+    if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+        Serial.println(F("SSD1306 allocation failed"));
+        for (;;)
+            ;  // Don't proceed, loop forever
+    }
+    display.display();
+    delay(2000);  // Pause for 2 seconds
+    display.clearDisplay();
+
     WelcomeScreen();
 
     servoX.attach(servoXPin, ServoMin, ServoMax);
     servoY.attach(servoYPin, ServoMin, ServoMax);
-    servoX.setSpeed(50);
+    servoX.setSpeed(100);
     servoY.setSpeed(200);
-    servoX.setAccel(0.1);
+    servoX.setAccel(0.2);
     servoY.setAccel(0.5);
     servoX.setAutoDetach(false);
     servoY.setAutoDetach(false);
@@ -236,7 +247,8 @@ void setup() {  // Setup function
     Yin = Y;
     servoX.setTargetDeg(Xin);
     servoY.setTargetDeg(Yin);
-
+    display.stopscroll();
+    display.clearDisplay();
 #endif  // Master
 
 #ifdef Slave
@@ -279,15 +291,16 @@ void loop() {
         }
     }
 
-    // delay(1);
-    // mainCount++;
-    // if (mainCount >= 10) {
-    //     mainCount = 0;
-    //     u8x8log.print("\f");
-    //     Serial.println("Yaw: " + String(Xin) + " Pitch: " + String(Yin) +
-    //                    " Status: " + ManualMode);
-    //     delay(1);
-    // }
+    mainCount++;
+    if (mainCount >= 30) {
+        mainCount = 0;
+        Serial.println("Yaw: " + String(Xin) + " Pitch: " + String(Yin) +
+                       " Status: " + ManualMode);
+    }
+
+    servoX.tick();
+    servoY.tick();
+
 #endif
 
 #ifdef Slave
