@@ -21,7 +21,7 @@ const int softRX = 2;
 const int softTX = 3;
 
 // Initalize variables
-int Xin, Yin, X, Y, SW;
+int Xin, Yin, X, Y, SW, tempX, tempY;
 int Xcal = 0;
 int Ycal = 0;
 // bool Status = false;
@@ -51,33 +51,19 @@ uint8_t u8log_buffer[U8LOG_WIDTH * U8LOG_HEIGHT];
 U8X8LOG u8x8log;
 bool servo_driver(int Xin, int Yin) {  // Function to drive the servos
     if (Xin <= 180 and Xin >= 0) {
-        int xTemp = 180 - Xin;
-        if (abs(xTemp - servoX.read()) > 5) {
-            X = xTemp;
-        }
-        int yTemp = 180 - Yin;
-        if (abs(yTemp - servoY.read()) > 5) {
-            Y = yTemp;
-        }
+        X = 180 - Xin;
+        Y = 180 - Yin;
     } else if (Xin <= 360) {
-        int xTemp = 360 - Xin;
-        if (abs(xTemp - servoX.read()) > 5) {
-            X = xTemp;
-        }
-        int yTemp = Yin;
-        if (abs(yTemp - servoY.read()) > 5) {
-            Y = yTemp;
-        }
-    } else {
-        X = 0;
-        Y = 0;
-        return false;
+        X = 360 - Xin;
+        Y = Yin;
     }
-    if (Y > 180) {
+    if (Yin > 180) {
         Y = 180;
-    } else if (Y < 0) {
+    }
+    if (Yin < 0) {
         Y = 0;
     }
+
     servoX.write(X);
     servoY.write(Y);
     return true;
@@ -116,10 +102,16 @@ void oledDisplay121(String str1, String str2, String str3) {
 }
 
 void ManualDriver() {
-    oledDisplay111("MANUAL MODE", "X POS: " + String(Xin),
-                   "Y POS: " + String(Yin), "WORKING");
-    Xin = map(analogRead(pinX), 0, 1023, 0, 360);
-    Yin = map(analogRead(pinY), 0, 1023, 0, 180);
+    // oledDisplay111("MANUAL MODE", "X POS: " + String(Xin),
+    //                "Y POS: " + String(Yin), "WORKING");
+    
+    if (abs(tempX - analogRead(pinY)) > 3 or abs(tempY - analogRead(pinY)) > 3) {
+        Xin = map(analogRead(pinX), 0, 1023, 0, 360);
+        Yin = map(analogRead(pinY), 0, 1023, 0, 180);
+        servo_driver(Xin, Yin);
+        tempX = Xin;
+        tempY = Yin;
+    }
     servo_driver(Xin, Yin);
 }
 
@@ -211,7 +203,6 @@ void PositionSend() {
 }
 #endif
 
-
 void setup() {  // Setup function
     Wire.begin();
     Serial.begin(115200);
@@ -266,7 +257,6 @@ void loop() {
     if (ModeSelect == 0) {  // Normal Mode
         if (ManualMode) {
             ManualDriver();
-            delay(1);
         } else {
             SerialDriver();
             delay(10);
