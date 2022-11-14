@@ -2,42 +2,37 @@
 This directory is intended for project specific (private) libraries.
 PlatformIO will compile them to static libraries and link into executable file.
 
-The source code of each library should be placed in a an own separate directory
-("lib/your_library_name/[here are source files]").
-
-For example, see a structure of the following two libraries `Foo` and `Bar`:
-
 |--lib
 |  |
-|  |--Bar
-|  |  |--docs
-|  |  |--examples
+|  |--I2Cdev
+|  |  |- I2Cdev.cpp
+|  |  |- I2Cdev.h
+|  |
+|  |--MPU6050
+|  |  |- MPU6050.cpp
+|  |  |- MPU6050.h
+|  |  |- MPU6050_6Axis_MotionApps20.h
+|  |  |- MPU6050_6Axis_MotionApps20.cpp
+|  |
+|  |--Servo
 |  |  |--src
-|  |     |- Bar.c
-|  |     |- Bar.h
-|  |  |- library.json (optional, custom build options, etc) https://docs.platformio.org/page/librarymanager/config.html
-|  |
-|  |--Foo
-|  |  |- Foo.c
-|  |  |- Foo.h
-|  |
-|  |- README --> THIS FILE
+|  |  |  |- Servo.h
+|  |  |  |--avr
+|  |  |  |  |- Servo.cpp
+|  |  
+|  |--U8g2
+|  |  |--src
+|  |  |  |- U8g2lib.h
+|  |  |  |- U8g2lib.cpp
+|  |  |  |- U8x8lib.h
+|  |  |  |- U8x8lib.cpp
+|  |  |  |--clib
+|  |  |  |  |- u8x8.h
+|  |  |  |  |- u8g2.h
 |
 |- platformio.ini
 |--src
-   |- main.c
-
-and a contents of `src/main.c`:
-```
-#include <Foo.h>
-#include <Bar.h>
-
-int main (void)
-{
-  ...
-}
-
-```
+|  |--main.cpp
 
 PlatformIO Library Dependency Finder will find automatically dependent
 libraries scanning project source files.
