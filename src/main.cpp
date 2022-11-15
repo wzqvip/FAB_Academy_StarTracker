@@ -126,8 +126,8 @@ void oledDisplay121(String str1, String str2, String str3) {
 }
 
 void ManualDriver() {
-    // oledDisplay111("MANUAL MODE", "X POS: " + String(Xin),
-    //                "Y POS: " + String(Yin), "WORKING");
+    oledDisplay111("MANUAL MODE", "X POS: " + String(Xin),
+                   "Y POS: " + String(Yin), "WORKING");
     Xin = map(analogRead(pinX), 0, 1023, 0, 360);
     Yin = map(analogRead(pinY), 0, 1023, 0, 90);
     if (mainCount % 10 == 0) {
