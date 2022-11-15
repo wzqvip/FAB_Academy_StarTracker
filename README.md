@@ -11,9 +11,13 @@ When you lost your distination, why dou't sit and admire the starry sky, they, t
 #### Ways to operate this
 
 * Use X and Y adjust lever.
-* Type in the direction of the star.
-* Type in the name of the star.
-* Point by hand and it will follow your finger.
+* *Type in the direction of the star.*
+* ~~Type in the name of the star.~~
+* *Point by hand and it will follow your finger.*
+
+> Only functions the first, the second and fourth could run with bit modify.
+>
+> The second one needs a map or special calcuation. not approached.
 
 #### Materials:
 
@@ -26,8 +30,6 @@ See the readme on [wikifactory](https://wikifactory.com/+fablabo/shanghai-tech-f
 [http://www.stellar-database.com/](http://www.stellar-database.com/)
 
 [http://simbad.u-strasbg.fr/simbad/](http://simbad.u-strasbg.fr/simbad/)
-
-
 
 #### Compile
 
@@ -68,3 +70,12 @@ RAM:   [=====     ]  49.2% (used 1008 bytes from 2048 bytes)
 Flash: [=====     ]  45.2% (used 13892 bytes from 30720 bytes)
 =========================================================================================================== [SUCCESS] Took 1.50 seconds ===========================================================================================================
 ```
+
+
+#### Something else.
+
+I'm in charge of the programming part. Lack of time so some of it has been done, the rest is possible but I'm not giong to do it currently or in the near future. Duckey_Duck made the 2D cutting and 3D pen holder.
+
+The class is done, and I may not going to improve it. Any pull request for special improvement is appreciate.
+
+If you have any problems with this, comment in issue or mail: tacoin@foxmail.com
