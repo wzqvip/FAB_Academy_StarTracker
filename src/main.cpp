@@ -50,41 +50,58 @@ bool rowed = false;
 
 SoftwareSerial ZigbeeSerial(softRX, softTX);
 
+// bool servo_driver(int Xin, int Yin) {  // Function to drive the servos
+//     if (Xin <= 180 and Xin >= 0) {
+//         int xTemp = 180 - Xin;
+//         if (abs(xTemp - servoX.read()) > 3) {
+//             X = xTemp;
+//         }
+//         int yTemp = 180 - Yin;
+//         if (abs(yTemp - servoY.read()) > 3) {
+//             Y = yTemp;
+//         }
+//     } else if (Xin <= 360) {
+//         int xTemp = 360 - Xin;
+//         if (abs(xTemp - servoX.read()) > 3) {
+//             X = xTemp;
+//         }
+//         int yTemp = Yin;
+//         if (abs(yTemp - servoY.read()) > 3) {
+//             Y = yTemp;
+//         }
+//     } else {
+//         X = 0;
+//         Y = 0;
+//         return false;
+//     }
+//     if (Yin > 180) {
+//         Y = 180;
+//     }
+//     if (Yin < 0) {
+//         Y = 0;
+//     }
+
+//     servoX.write(X);
+//     servoY.write(Y);
+//     return true;
+// }
+
 bool servo_driver(int Xin, int Yin) {  // Function to drive the servos
     if (Xin <= 180 and Xin >= 0) {
-        int xTemp = 180 - Xin;
-        if (abs(xTemp - servoX.read()) > 3) {
-            X = xTemp;
-        }
-        int yTemp = 180 - Yin;
-        if (abs(yTemp - servoY.read()) > 3) {
-            Y = yTemp;
-        }
+        X = 180 - Xin;
+        Y = 180 - Yin;
     } else if (Xin <= 360) {
-        int xTemp = 360 - Xin;
-        if (abs(xTemp - servoX.read()) > 3) {
-            X = xTemp;
-        }
-        int yTemp = Yin;
-        if (abs(yTemp - servoY.read()) > 3) {
-            Y = yTemp;
-        }
+        X = 360 - Xin;
+        Y = Yin;
     } else {
-        X = 0;
-        Y = 0;
         return false;
     }
-    if (Yin > 180) {
-        Y = 180;
-    }
-    if (Yin < 0) {
-        Y = 0;
-    }
-
     servoX.write(X);
     servoY.write(Y);
     return true;
 }
+
+
 
 void WelcomeScreen() {
     display.clearDisplay();
