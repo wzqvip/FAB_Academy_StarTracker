@@ -1,4 +1,4 @@
-#define Slave (1)  // Use this to define if the Arduino is the master or slave
+// #define Slave (1)  // Use this to define if the Arduino is the master or slave
 
 #include <Arduino.h>
 #include <I2Cdev.h>
@@ -33,7 +33,7 @@ int mainCount = 0;
 ServoSmooth servoX;
 ServoSmooth servoY;
 
-bool ManualMode = false;
+bool ManualMode = true;
 const int ServoMin = 470;
 const int ServoMax = 2500;
 /* There are three mode currenty .
@@ -44,7 +44,7 @@ const int ServoMax = 2500;
     Input the position and then track
 3. Pointer Mode
     Point by hand and it will follow your lead*/
-const int ModeSelect = 1;
+const int ModeSelect = 0;
 const int WirelessSerial = 1;
 String Mode;
 
@@ -53,7 +53,6 @@ bool rowed = false;
 SoftwareSerial ZigbeeSerial(softRX, softTX);
 
 bool servo_driver(int Xin, int Yin) {  // Function to drive the servos
-
     if (Xin <= 180 and Xin >= 0) {
         X = 180 - Xin;
         Y = 180 - Yin;
@@ -132,6 +131,13 @@ void SerialDriver() {
                 c = ZigbeeSerial.read();
             }
             Serial.println(a);
+            display.clearDisplay();
+            display.setCursor(0, 0);
+            display.setTextSize(1);
+            display.setTextColor(SSD1306_WHITE);
+            display.println("Received Message!");
+            display.println(a);
+            display.display();
         }
         if (a.length() > 0) {
             String value1, value2;
@@ -222,6 +228,7 @@ void setup() {  // Setup function
     pinMode(LED_BUILTIN, OUTPUT);
 
 #ifndef Slave
+    digitalWrite(LED_BUILTIN, LOW);
     Serial.println("Master Mode");
     pinMode(servoXPin, OUTPUT);
     pinMode(servoYPin, OUTPUT);
@@ -229,8 +236,6 @@ void setup() {  // Setup function
 
     if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
         Serial.println(F("SSD1306 allocation failed"));
-        for (;;)
-            ;  // Don't proceed, loop forever
     }
     display.display();
     delay(2000);  // Pause for 2 seconds
@@ -238,8 +243,8 @@ void setup() {  // Setup function
 
     WelcomeScreen();
 
-    servoX.attach(servoXPin, ServoMin, ServoMax);
-    servoY.attach(servoYPin, ServoMin, ServoMax);
+    servoX.attach(servoXPin, ServoMin, ServoMax, 0);
+    servoY.attach(servoYPin, ServoMin, ServoMax, 90);
     servoX.setSpeed(100);
     servoY.setSpeed(200);
     servoX.setAccel(0.2);
@@ -255,6 +260,8 @@ void setup() {  // Setup function
     servoY.setTargetDeg(Yin);
     display.stopscroll();
     display.clearDisplay();
+    display.display();
+    digitalWrite(LED_BUILTIN, HIGH);
 #endif  // Master
 
 #ifdef Slave
@@ -281,35 +288,20 @@ void setup() {  // Setup function
 
 void loop() {
 #ifndef Slave
-    if (ModeSelect == 0) {  // Normal Mode
-        if (ManualMode) {
-            ManualDriver();
-        } else {
-            SerialDriver();
-            delay(10);
-            //   if (btnState == LOW) {
-            //     ManualMode = true;
-            //   }
-        }
-    } else {  // Debug Mode
-        if (ManualMode) {
-            ManualDriver();
-            delay(1);
-        } else {
-            SerialDriver();
-            delay(10);
-        }
+
+    if (ManualMode) {
+        ManualDriver();
+    } else {
+        SerialDriver();
+        delay(10);
     }
 
     mainCount++;
-    if (mainCount >= 30) {
+    if (mainCount >= 50) {
         mainCount = 0;
         Serial.println("Yaw: " + String(Xin) + " Pitch: " + String(Yin) +
                        " Status: " + ManualMode);
     }
-
-    servoX.tick();
-    servoY.tick();
 
 #endif
 
