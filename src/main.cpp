@@ -1,8 +1,7 @@
-// #define Slave (1)  // Use this to define if the Arduino is the master or slave
+//#define Slave (1)  // Use this to define if the Arduino is the master or slave
 
 #include <Arduino.h>
 #include <I2Cdev.h>
-#include <SPI.h>
 #include <Wire.h>
 
 #ifndef Slave
@@ -30,9 +29,8 @@ const int softTX = 3;
 int Xin, Yin, X, Y, SW;
 // bool Status = false;
 int mainCount = 0;
-ServoSmooth servoX;
-ServoSmooth servoY;
-
+Servo servoX;
+Servo servoY;
 bool ManualMode = true;
 const int ServoMin = 470;
 const int ServoMax = 2500;
@@ -52,6 +50,42 @@ bool rowed = false;
 
 SoftwareSerial ZigbeeSerial(softRX, softTX);
 
+// bool servo_driver(int Xin, int Yin) {  // Function to drive the servos
+//     if (Xin <= 180 and Xin >= 0) {
+//         int xTemp = 180 - Xin;
+//         if (abs(xTemp - servoX.read()) > 3) {
+//             X = xTemp;
+//         }
+//         int yTemp = 180 - Yin;
+//         if (abs(yTemp - servoY.read()) > 3) {
+//             Y = yTemp;
+//         }
+//     } else if (Xin <= 360) {
+//         int xTemp = 360 - Xin;
+//         if (abs(xTemp - servoX.read()) > 3) {
+//             X = xTemp;
+//         }
+//         int yTemp = Yin;
+//         if (abs(yTemp - servoY.read()) > 3) {
+//             Y = yTemp;
+//         }
+//     } else {
+//         X = 0;
+//         Y = 0;
+//         return false;
+//     }
+//     if (Yin > 180) {
+//         Y = 180;
+//     }
+//     if (Yin < 0) {
+//         Y = 0;
+//     }
+
+//     servoX.write(X);
+//     servoY.write(Y);
+//     return true;
+// }
+
 bool servo_driver(int Xin, int Yin) {  // Function to drive the servos
     if (Xin <= 180 and Xin >= 0) {
         X = 180 - Xin;
@@ -62,10 +96,12 @@ bool servo_driver(int Xin, int Yin) {  // Function to drive the servos
     } else {
         return false;
     }
-    servoX.setTargetDeg(X);
-    servoY.setTargetDeg(Y);
+    servoX.write(X);
+    servoY.write(Y);
     return true;
 }
+
+
 
 void WelcomeScreen() {
     display.clearDisplay();
@@ -109,7 +145,6 @@ void oledDisplay121(String str1, String str2, String str3) {
 void ManualDriver() {
     oledDisplay111("MANUAL MODE", "X POS: " + String(Xin),
                    "Y POS: " + String(Yin), "WORKING");
-
     Xin = map(analogRead(pinX), 0, 1023, 0, 360);
     Yin = map(analogRead(pinY), 0, 1023, 0, 90);
     if (mainCount % 10 == 0) {
@@ -190,7 +225,6 @@ VectorFloat gravity;
 float ypr[3];
 const int softRX = 2;
 const int softTX = 3;
-
 SoftwareSerial ZigbeeSerial(softRX, softTX);
 
 void PositionSend() {
@@ -226,9 +260,7 @@ void setup() {  // Setup function
     ZigbeeSerial.begin(115200);
     ZigbeeSerial.println("ZigbeeSerial Started");
     pinMode(LED_BUILTIN, OUTPUT);
-
 #ifndef Slave
-    digitalWrite(LED_BUILTIN, LOW);
     Serial.println("Master Mode");
     pinMode(servoXPin, OUTPUT);
     pinMode(servoYPin, OUTPUT);
@@ -243,29 +275,18 @@ void setup() {  // Setup function
 
     WelcomeScreen();
 
-    servoX.attach(servoXPin, ServoMin, ServoMax, 0);
-    servoY.attach(servoYPin, ServoMin, ServoMax, 90);
-    servoX.setSpeed(100);
-    servoY.setSpeed(200);
-    servoX.setAccel(0.2);
-    servoY.setAccel(0.5);
-    servoX.setAutoDetach(false);
-    servoY.setAutoDetach(false);
-
+    servoX.attach(servoXPin, ServoMin, ServoMax);
+    servoY.attach(servoYPin, ServoMin, ServoMax);
     X = 0;
     Y = 90;
     Xin = X;
     Yin = Y;
-    servoX.setTargetDeg(Xin);
-    servoY.setTargetDeg(Yin);
-    display.stopscroll();
-    display.clearDisplay();
-    display.display();
-    digitalWrite(LED_BUILTIN, HIGH);
+    servoX.write(Xin);
+    servoY.write(Yin);
+
 #endif  // Master
 
 #ifdef Slave
-    digitalWrite(LED_BUILTIN, LOW);
     ZigbeeSerial.println("Slave Mode");
     mpu.initialize();
     if (mpu.testConnection()) {
@@ -273,7 +294,6 @@ void setup() {  // Setup function
     } else {
         Serial.println("MPU6050 connection failed");
     };
-
     mpu.dmpInitialize();
     mpu.CalibrateAccel(6);
     mpu.CalibrateGyro(6);
@@ -288,12 +308,24 @@ void setup() {  // Setup function
 
 void loop() {
 #ifndef Slave
-
-    if (ManualMode) {
-        ManualDriver();
-    } else {
-        SerialDriver();
-        delay(10);
+    if (ModeSelect == 0) {  // Normal Mode
+        if (ManualMode) {
+            ManualDriver();
+        } else {
+            SerialDriver();
+            delay(10);
+            //   if (btnState == LOW) {
+            //     ManualMode = true;
+            //   }
+        }
+    } else {  // Debug Mode
+        if (ManualMode) {
+            ManualDriver();
+            delay(1);
+        } else {
+            SerialDriver();
+            delay(10);
+        }
     }
 
     mainCount++;
